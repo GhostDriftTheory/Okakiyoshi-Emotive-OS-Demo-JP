@@ -1,0 +1,1441 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Play, Pause, RefreshCw, Shield, AlertTriangle, Eye, Lock, Zap, 
+  TrendingUp, FileCheck, CheckCircle2, ArrowRight, ArrowUp, ArrowDown, 
+  BarChart3, Activity, Terminal, BookOpen, List, Heart, Globe, BoxSelect, Cpu, History,
+  Book, X, Layers, Lightbulb, Sliders, Sparkles, MapPin, Radio,
+  Microscope, AlignLeft, ExternalLink, Info
+} from 'lucide-react';
+
+/**
+ * Wasan 2.0: Oka Kiyoshi Edition (Ultimate v17 - Mobile Reordering)
+ * Updates:
+ * - Implemented "Chart -> Controls -> Header" order for mobile in interactive chapters.
+ * This ensures the slider is immediately below the chart, minimizing eye movement.
+ * - Refined text wrapping with inline-block spans for Japanese text.
+ * - Optimized touch targets and spacing.
+ */
+
+// --- 微細変動シナリオ（Micro Fluctuations） ---
+const SCENARIO_MICRO = {
+  limit: 100,
+  initialEnergy: 40, 
+  steps: Array.from({ length: 30 }, (_, i) => {
+    const isDown = i % 5 === 2 || i % 7 === 4; 
+    const val = isDown ? 0 : Math.floor(Math.random() * 4) + 1;
+    return {
+      id: i + 1,
+      type: isDown ? 'down' : 'up',
+      increase: val,
+      label: isDown ? 'ゆらぎ（呼）' : 'ゆらぎ（吸）'
+    };
+  })
+};
+
+// --- 型定義 ---
+type Phase = 'intro' | 'chapter1' | 'chapter2' | 'chapterPrime' | 'chapter3' | 'chapter4' | 'advanced';
+
+// --- カラーパレット ---
+const COLORS = {
+  bg: "bg-[#fdfcf8]", 
+  card: "bg-white",
+  text: "text-stone-800",
+  subText: "text-stone-500",
+  accent: "text-indigo-800",
+  safe: "text-teal-700",
+  danger: "text-rose-700",
+  border: "border-stone-200",
+  chartGrid: "#e5e5e5",
+  chartGhost: "#be123c",
+  chartSafe: "#0f766e",
+  chartPoint: "#1e3a8a",
+  okaMode: "rgba(30, 58, 138, 0.1)",
+  primeWave: "#4f46e5", 
+};
+
+// --- CSS Styles for Animations ---
+const GlobalStyles = () => (
+  <style>{`
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeInLeft {
+      from { opacity: 0; transform: translateX(-10px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes bounceIn {
+      0% { transform: scale(0.9); opacity: 0; }
+      50% { transform: scale(1.05); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .scroll-container {
+      scroll-behavior: smooth;
+    }
+    .animate-fade-in { animation: fadeIn 0.6s ease-out forwards; }
+    .animate-fade-in-up { animation: fadeInUp 0.5s ease-out forwards; }
+    .animate-fade-in-left { animation: fadeInLeft 0.2s ease-out forwards; }
+    .animate-bounce-in { animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+    
+    /* Mobile text optimization */
+    .text-justify-mobile {
+      text-align: justify;
+      text-justify: inter-ideograph;
+    }
+  `}</style>
+);
+
+// --- UI Components (Defined BEFORE usage) ---
+
+const Header = ({ title, subtitle, icon, className = "" }: any) => (
+  <div className={`flex items-start md:items-center gap-3 md:gap-4 mb-4 md:mb-2 ${className}`}>
+    <div className="p-2.5 md:p-3 bg-white rounded-sm border border-stone-200 text-indigo-800 shadow-sm shrink-0 mt-1 md:mt-0">
+      {icon}
+    </div>
+    <div>
+      <h2 className="text-lg md:text-xl font-bold text-stone-800 tracking-tight font-serif leading-tight">{title}</h2>
+      <p className="text-[10px] md:text-xs font-mono text-stone-400 tracking-widest uppercase mt-0.5">{subtitle}</p>
+    </div>
+  </div>
+);
+
+const Badge = ({ text, color }: { text: string, color: 'data'|'model'|'ghost' }) => {
+  const styles = {
+    data: "bg-indigo-50 text-indigo-700 border-indigo-100",
+    model: "bg-teal-50 text-teal-700 border-teal-100",
+    ghost: "bg-rose-50 text-rose-700 border-rose-100"
+  };
+  return (
+    <span className={`px-2 py-1 rounded-sm text-[10px] font-bold border ${styles[color]} uppercase tracking-wider inline-block`}>
+      {text}
+    </span>
+  );
+};
+
+const TabButton = ({ active, onClick, label, isDanger }: any) => (
+  <button
+    onClick={onClick}
+    className={`w-full py-3 px-3 md:px-4 rounded-sm text-[11px] md:text-xs font-bold flex items-center justify-between transition-all font-serif ${
+      active 
+        ? (isDanger ? 'bg-rose-700 text-white shadow-md' : 'bg-indigo-900 text-white shadow-md')
+        : 'bg-white text-stone-500 hover:bg-stone-50 border border-transparent hover:border-stone-200'
+    }`}
+  >
+    <span className="truncate mr-2">{label}</span>
+    {active && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0"></div>}
+  </button>
+);
+
+const Button = ({ onClick, label, icon, primary }: any) => (
+  <button
+    onClick={onClick}
+    className={`group w-full py-3.5 md:py-4 px-4 md:px-6 rounded-sm font-bold text-xs tracking-widest flex items-center justify-center gap-3 transition-all transform active:scale-98 shadow-md border ${
+      primary 
+        ? 'bg-indigo-800 text-white border-indigo-900 hover:bg-indigo-900 shadow-indigo-100' 
+        : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'
+    }`}
+  >
+    {label}
+    <span className="group-hover:translate-x-1 transition-transform">{icon}</span>
+  </button>
+);
+
+const StatusMonitor = ({ label, value, isDanger }: any) => (
+  <div className={`p-3 md:p-4 rounded-sm border ${isDanger ? 'bg-rose-50 border-rose-200' : 'bg-stone-50 border-stone-200'} flex justify-between items-center shadow-inner`}>
+    <span className="text-[10px] font-mono text-stone-500">{label}</span>
+    <span className={`font-bold tracking-wider text-xs md:text-sm ${isDanger ? 'text-rose-600 animate-pulse' : 'text-teal-700'}`}>
+      {value}
+    </span>
+  </div>
+);
+
+const Legend = ({ color, label }: any) => (
+  <div className="flex items-center gap-2">
+    <div className={`w-2 h-2 rounded-full ${color} shadow-sm shrink-0`}></div>
+    <span className="text-[10px] font-bold text-stone-600 font-serif leading-none">{label}</span>
+  </div>
+);
+
+// 新しい豆カードコンポーネント（軸ガイド）
+const AxisGuide = () => (
+  <div className="absolute top-3 left-3 md:top-4 md:left-4 bg-white/90 backdrop-blur-sm border border-stone-200 p-1.5 md:p-2 rounded-sm shadow-sm z-10 pointer-events-none">
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-1.5 text-[9px] md:text-[10px] text-stone-500 font-serif">
+        <ArrowUp size={8} className="text-stone-400" />
+        <span>縦：ゆらぎの強さ (Energy)</span>
+      </div>
+      <div className="flex items-center gap-1.5 text-[9px] md:text-[10px] text-stone-500 font-serif">
+        <ArrowRight size={8} className="text-stone-400" />
+        <span>横：観測点 / 時間 (n)</span>
+      </div>
+    </div>
+  </div>
+);
+
+// --- Phase Components (Defined BEFORE App) ---
+
+const IntroPhase = ({ onNext, onAdvanced }: { onNext: () => void, onAdvanced: () => void }) => {
+  return (
+    <div className="flex flex-col items-center text-center space-y-6 md:space-y-8 animate-fade-in py-6 md:py-12 w-full">
+      <div className="relative">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 md:w-24 md:h-24 bg-indigo-50 rounded-full blur-xl"></div>
+        <div className="relative bg-white p-5 md:p-6 rounded-full border border-stone-100 shadow-xl">
+          <BookOpen size={40} className="text-indigo-800 md:w-12 md:h-12" strokeWidth={1.5} />
+        </div>
+      </div>
+      
+      <div className="space-y-4 max-w-2xl px-2">
+        <h1 className="text-2xl sm:text-3xl md:text-5xl font-serif font-bold text-stone-900 tracking-tight leading-snug md:leading-tight">
+          <span className="inline-block">情緒を守る</span><span className="inline-block"><span className="text-rose-700">ゴースト封じ</span>を</span><br className="hidden sm:block" />
+          <span className="inline-block"><span className="text-indigo-800">和算</span>で体験する</span>
+        </h1>
+        <div className="h-px w-16 md:w-24 bg-indigo-900/20 mx-auto my-4 md:my-6"></div>
+        <p className="text-[10px] md:text-base text-stone-500 font-serif tracking-widest uppercase">
+          Mathematics as Emotion · Oka Kiyoshi × Finite Closure
+        </p>
+      </div>
+
+      <div className="bg-white p-6 md:p-8 rounded-sm border border-stone-200 shadow-lg w-full max-w-xl text-left relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-1 h-full bg-indigo-800"></div>
+        <div className="text-sm md:text-base text-stone-600 font-serif leading-7 md:leading-8 text-justify-mobile space-y-4">
+          <p>
+            <span className="inline-block">現代の計算は</span><span className="inline-block">「世界はなめらかである」と</span><strong className="font-bold text-stone-900 border-b border-indigo-200 inline-block">信じて</strong><span className="inline-block">進めます。</span>
+            <span className="inline-block">しかし私たちが</span><span className="inline-block">本当に見るのは、</span><span className="inline-block">いつも「飛び飛びの点（データ）」</span><span className="inline-block">だけです。</span>
+          </p>
+          <p>
+            <span className="inline-block">このデモでは、</span><span className="inline-block">岡潔が大事にした</span><span className="font-bold text-indigo-800 inline-block">情緒</span>──
+            <span className="inline-block">決して自分では制御できない、</span><span className="inline-block">自生的な心の動き──を、</span>
+            <span className="inline-block">有限の足し算だけで</span><span className="inline-block">受け止めるOSを</span><span className="inline-block">体験します。</span>
+          </p>
+        </div>
+      </div>
+
+      {/* 3-Step Tutorial */}
+      <div className="bg-stone-50 px-4 py-4 md:px-6 md:py-4 rounded-sm border border-stone-200 w-full max-w-md">
+        <h3 className="text-[10px] font-bold text-stone-500 mb-3 uppercase tracking-widest text-center">3クリックで完了するチュートリアル</h3>
+        <div className="flex justify-between items-start text-[10px] font-serif text-stone-700 gap-1 md:gap-2">
+           <div className="flex-1 text-center flex flex-col items-center gap-1">
+             <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold mb-1">1</div>
+             <span className="leading-tight"><span className="font-bold">視点</span>を変える<br/>(局所 vs 大域)</span>
+           </div>
+           <div className="text-stone-300 mt-2">→</div>
+           <div className="flex-1 text-center flex flex-col items-center gap-1">
+             <div className="w-5 h-5 rounded-full bg-rose-100 text-rose-800 flex items-center justify-center font-bold mb-1">2</div>
+             <span className="leading-tight"><span className="font-bold">情緒</span>と同調<br/>(自生する心)</span>
+           </div>
+           <div className="text-stone-300 mt-2">→</div>
+           <div className="flex-1 text-center flex flex-col items-center gap-1">
+             <div className="w-5 h-5 rounded-full bg-teal-100 text-teal-800 flex items-center justify-center font-bold mb-1">3</div>
+             <span className="leading-tight"><span className="font-bold">台帳</span>に落とす<br/>(有限で包む)</span>
+           </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 w-full max-w-xs">
+        <Button onClick={onNext} label="第1章へ進む" icon={<ArrowRight size={16}/>} primary />
+        <button 
+          onClick={onAdvanced}
+          className="text-xs text-stone-400 underline hover:text-stone-600 transition-colors font-serif py-2"
+        >
+          ※ 数学好き・上級者の方はこちら（詳細解説）
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const Chapter1 = ({ onNext }: { onNext: () => void }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [viewState, setViewState] = useState<'data' | 'model' | 'ghost'>('data');
+
+  useEffect(() => {
+    const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
+    const w = 800, h = 450;
+    
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,w,h); 
+    
+    ctx.strokeStyle = COLORS.chartGrid; ctx.lineWidth = 1;
+    for(let i=0; i<w; i+=40) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,h); ctx.stroke(); }
+    for(let i=0; i<h; i+=40) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(w,i); ctx.stroke(); }
+
+    const points = Array.from({length: 9}, (_,i) => ({x: (i+1)*(w/10), y: h/2 + Math.sin(i+1)*50}));
+
+    if(viewState === 'ghost') {
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for(let i=0; i<points.length-1; i++){
+        const p1 = points[i], p2 = points[i+1], mid = (p1.x+p2.x)/2;
+        const drift = (i%2===0 ? -120 : 120);
+        ctx.bezierCurveTo(p1.x+20, p1.y, mid, p1.y+drift, mid, p1.y+drift/2);
+        ctx.bezierCurveTo(mid, p2.y+drift/2, p2.x-20, p2.y, p2.x, p2.y);
+      }
+      ctx.strokeStyle = COLORS.chartGhost; ctx.lineWidth = 2.5; ctx.stroke();
+    }
+
+    if(viewState === 'model' || viewState === 'ghost') {
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for(let i=0; i<points.length-1; i++){
+        const xc = (points[i].x + points[i+1].x)/2;
+        const yc = (points[i].y + points[i+1].y)/2;
+        ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+      }
+      ctx.lineTo(points[points.length-1].x, points[points.length-1].y);
+      ctx.strokeStyle = viewState === 'ghost' ? 'rgba(15, 118, 110, 0.2)' : COLORS.chartSafe; 
+      ctx.lineWidth = 3; ctx.stroke();
+    }
+
+    points.forEach(p => {
+      ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI*2);
+      ctx.fillStyle = COLORS.chartPoint; ctx.fill();
+      ctx.lineWidth = 0; ctx.stroke();
+    });
+
+  }, [viewState]);
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 w-full animate-fade-in">
+      {/* Mobile: Chart First -> Controls -> Header(Info) */}
+      
+      {/* Visual - Order 1 on Mobile */}
+      <div className="md:col-span-2 bg-white rounded-sm border border-stone-200 shadow-xl overflow-hidden relative group order-1 md:order-2 aspect-video md:aspect-auto">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-800 to-stone-200"></div>
+        <AxisGuide />
+        <canvas ref={canvasRef} width={800} height={450} className="w-full h-full object-contain" />
+        <div className="absolute bottom-4 left-4 md:bottom-6 md:left-6 flex flex-wrap gap-2 md:gap-6 bg-white/90 px-3 py-2 md:px-4 md:py-2 rounded-sm border border-stone-200 backdrop-blur-sm shadow-sm max-w-[90%]">
+          <Legend color="bg-indigo-800" label="観測点" />
+          {viewState !== 'data' && <Legend color="bg-teal-700" label="モデル" />}
+          {viewState === 'ghost' && <Legend color="bg-rose-700" label="ゴースト" />}
+        </div>
+      </div>
+
+      {/* Control Panel - Order 2 on Mobile */}
+      <div className="md:col-span-1 space-y-4 md:space-y-6 order-2 md:order-1 flex flex-col">
+        {/* On Mobile: Controls appear directly below chart. Header appears last to avoid gap. On Desktop: Header first. */}
+        <div className="contents md:block">
+          <Header title="第1章：局所という死角" subtitle="The Local Trap" icon={<Eye/>} className="order-2 md:order-1" />
+          
+          <div className="bg-white border border-stone-200 shadow-sm rounded-sm p-4 md:p-6 flex flex-col justify-between h-auto md:h-[340px] gap-4 md:gap-0 order-1 md:order-2">
+            <div className="space-y-3 md:space-y-4">
+              <Badge text={viewState === 'data' ? "1. 有限の点" : viewState === 'model' ? "2. なめらか（局所）" : "3. 生のゆらぎ"} color={viewState} />
+              <div className="text-xs md:text-sm text-stone-600 leading-relaxed font-serif text-justify-mobile">
+                <p>
+                  {viewState === 'data' && "私たちは「点」しか見えません。しかしAIや科学は、点の間を勝手につないでしまいます。"}
+                  {viewState === 'model' && "「なめらかにつながっているはずだ」という思い込み（死んだ数学）は、計算しやすいですが現実の生を見落とします。"}
+                  {viewState === 'ghost' && "数学的には、点の間で何が起きていても自由です。ここに見えない「生のゆらぎ（ゴースト）」が潜んでいます。"}
+                </p>
+              </div>
+            </div>
+            
+            <div className="space-y-2 border-t border-stone-100 pt-4">
+              <TabButton active={viewState==='data'} onClick={()=>setViewState('data')} label="観測データのみ" />
+              <TabButton active={viewState==='model'} onClick={()=>setViewState('model')} label="なめらかと仮定" />
+              <TabButton active={viewState==='ghost'} onClick={()=>setViewState('ghost')} label="見えないゆらぎ" isDanger />
+            </div>
+          </div>
+
+          {viewState === 'ghost' && (
+            <div className="animate-fade-in-up order-3">
+              <Button onClick={onNext} label="次へ：大域と穴の体験" icon={<ArrowRight size={16}/>} primary />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Chapter2 = ({ onNext }: { onNext: () => void }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [viewMode, setViewMode] = useState<'local' | 'oka'>('local'); 
+  const [hasHole, setHasHole] = useState(false); 
+  const [isAbsorbed, setIsAbsorbed] = useState(false); 
+
+  const timeRef = useRef(0);
+  const mapY = (val: number) => 400 - (val * 3);
+  const sectionWidth = 800 / 5;
+
+  const calculateEmotion = () => {
+    let score = 100;
+    if (hasHole && !isAbsorbed) score -= 60; 
+    if (viewMode === 'local' && hasHole) score -= 20; 
+    if (hasHole && isAbsorbed) score = 90; 
+    return Math.max(0, Math.min(100, score));
+  };
+  const emotionScore = calculateEmotion();
+
+  useEffect(() => {
+    let animId: number;
+    const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
+
+    const render = () => {
+      timeRef.current += 0.05;
+      const t = timeRef.current;
+      const w = 800, h = 450;
+
+      ctx.clearRect(0,0,w,h);
+      ctx.fillStyle = viewMode === 'oka' ? COLORS.okaMode : '#ffffff'; 
+      ctx.fillRect(0,0,w,h);
+
+      ctx.strokeStyle = COLORS.chartGrid; ctx.lineWidth = 1;
+      for(let i=0; i<w; i+=40) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,h); ctx.stroke(); }
+      
+      const limitY = mapY(100); 
+      
+      if (viewMode === 'oka') {
+        ctx.fillStyle = 'rgba(20, 184, 166, 0.05)';
+        ctx.fillRect(0, limitY, w, mapY(0) - limitY);
+        ctx.strokeStyle = COLORS.chartSafe; ctx.lineWidth = 2; ctx.setLineDash([6,4]);
+        ctx.beginPath(); ctx.moveTo(0, limitY); ctx.lineTo(w, limitY); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = COLORS.chartSafe; ctx.font = "bold 13px 'Noto Serif JP', serif";
+        ctx.fillText(`限界ライン (Limit) = 100`, 10, limitY - 10);
+      }
+
+      ctx.strokeStyle = '#94a3b8'; ctx.setLineDash([4,4]);
+      for(let i=1; i<5; i++) {
+        ctx.beginPath(); ctx.moveTo(i*sectionWidth, 0); ctx.lineTo(i*sectionWidth, h); ctx.stroke();
+      }
+      ctx.setLineDash([]);
+
+      const points = [{x: 0, y: mapY(25)}];
+      const steps = [40, 55, 40, 65, 80]; 
+      steps.forEach((val, i) => {
+        let v = val;
+        if (hasHole && i === 2 && !isAbsorbed) {
+            v = val + Math.sin(t * 10) * 20; 
+        }
+        points.push({ x: (i+1) * sectionWidth, y: mapY(v) });
+      });
+
+      if (viewMode === 'local') {
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for(let i=0; i<points.length-1; i++) {
+          if (hasHole && i === 2 && !isAbsorbed) {
+              ctx.stroke(); ctx.beginPath(); ctx.setLineDash([5,5]); ctx.strokeStyle = COLORS.danger;
+          } else {
+              ctx.setLineDash([]); ctx.strokeStyle = COLORS.subText;
+          }
+          const xc = (points[i].x + points[i+1].x)/2;
+          const yc = (points[i].y + points[i+1].y)/2;
+          ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+        }
+        ctx.lineTo(points[5].x, points[5].y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, mapY(0));
+        ctx.lineTo(points[0].x, points[0].y);
+        for(let i=0; i<points.length-1; i++) {
+           const xc = (points[i].x + points[i+1].x)/2;
+           const yc = (points[i].y + points[i+1].y)/2;
+           ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+        }
+        ctx.lineTo(points[5].x, points[5].y);
+        ctx.lineTo(points[5].x, mapY(0));
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(79, 70, 229, 0.1)'; 
+        ctx.fill();
+        ctx.strokeStyle = COLORS.accent; ctx.lineWidth = 3; ctx.stroke();
+      }
+
+      if (hasHole) {
+        const holeX = 2.5 * sectionWidth;
+        if (isAbsorbed) {
+          const rectX = 2 * sectionWidth;
+          const rectW = sectionWidth;
+          const rectY = limitY;
+          const rectH = mapY(0) - limitY;
+          ctx.fillStyle = 'rgba(15, 118, 110, 0.1)'; 
+          ctx.fillRect(rectX, rectY, rectW, rectH);
+          ctx.strokeStyle = COLORS.chartSafe; ctx.lineWidth = 2;
+          ctx.strokeRect(rectX, rectY, rectW, rectH);
+          ctx.fillStyle = COLORS.chartSafe; ctx.font = "bold 12px sans-serif";
+          ctx.fillText("OS BOUNDARY", rectX + 10, rectY + 20);
+        } else {
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+          ctx.beginPath(); ctx.arc(holeX, h/2, 40, 0, Math.PI*2); ctx.fill();
+          ctx.strokeStyle = COLORS.danger; ctx.lineWidth = 2; ctx.setLineDash([5,3]);
+          ctx.stroke(); ctx.setLineDash([]);
+          ctx.fillStyle = COLORS.danger; ctx.font = "bold 14px sans-serif";
+          ctx.fillText("UNKNOWN VOID", holeX - 50, h/2 + 5);
+        }
+      }
+
+      points.forEach(p => {
+        ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI*2);
+        ctx.fillStyle = COLORS.chartPoint; ctx.fill();
+        ctx.lineWidth = 0; ctx.stroke();
+      });
+
+      animId = requestAnimationFrame(render);
+    };
+    render();
+    return () => cancelAnimationFrame(animId);
+  }, [viewMode, hasHole, isAbsorbed]);
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 w-full animate-fade-in">
+      {/* Visual - Order 1 Mobile */}
+      <div className="md:col-span-2 bg-white rounded-sm border border-stone-200 shadow-xl overflow-hidden relative order-1 md:order-2 aspect-video md:aspect-auto">
+        <AxisGuide />
+        <canvas ref={canvasRef} width={800} height={450} className="w-full h-full object-contain" />
+      </div>
+
+      {/* Control - Order 2 Mobile */}
+      <div className="md:col-span-1 space-y-4 md:space-y-6 order-2 md:order-1 flex flex-col">
+        {/* Use contents to reorder children on mobile while keeping grid on desktop */}
+        <div className="contents md:block">
+          <Header 
+            title="第2章：岡ビュー" 
+            subtitle="局所ではなく“全体”を見る" 
+            icon={<Globe/>} 
+            className="order-2 md:order-1"
+          />
+          <div className="bg-white border border-stone-200 rounded-sm p-4 md:p-5 flex flex-col gap-4 shadow-sm h-full order-1 md:order-2">
+            <div className="space-y-2">
+              <h4 className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">1. 視点の切り替え</h4>
+              <div className="flex bg-stone-100 p-1 rounded-sm border border-stone-200">
+                <button onClick={() => setViewMode('local')} className={`flex-1 py-2 text-[11px] md:text-xs font-bold rounded-sm transition-all ${viewMode==='local' ? 'bg-white shadow-sm text-stone-800' : 'text-stone-400'}`}>局所だけ見る</button>
+                <button onClick={() => setViewMode('oka')} className={`flex-1 py-2 text-[11px] md:text-xs font-bold rounded-sm transition-all ${viewMode==='oka' ? 'bg-indigo-800 shadow-sm text-white' : 'text-stone-400'}`}>岡ビュー（領域）</button>
+              </div>
+              <p className="text-[10px] text-stone-500 font-serif leading-relaxed text-justify-mobile">局所だけを見ると“よさそう”に見えますが、岡潔は領域全体で見ると逆の顔になることを問題にしました。</p>
+              <div className="text-[10px] text-indigo-800 bg-indigo-50 p-2 rounded-sm border border-indigo-100 mt-2 font-serif flex gap-2 items-start leading-relaxed text-justify-mobile">
+                <History size={12} className="mt-0.5 flex-shrink-0" />
+                <span className="inline-block">1930〜40年代、この『領域全体で見る』視点で</span><span className="inline-block">Cousin問題など世界中が手こずっていた難問が</span><span className="inline-block">一気に片づきました。</span>
+              </div>
+            </div>
+            <div className="space-y-2 border-t border-stone-100 pt-4">
+              <h4 className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">2. 未観測の穴</h4>
+              {!hasHole ? (
+                <button onClick={() => { setHasHole(true); setIsAbsorbed(false); }} className="w-full py-3 bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-600 text-xs font-bold rounded-sm flex items-center justify-center gap-2"><BoxSelect size={14}/> 穴あり（不安）</button>
+              ) : (
+                <div className="space-y-2">
+                  <div className="p-2 bg-rose-50 border border-rose-100 text-rose-700 text-[10px] md:text-xs font-serif text-center font-bold">データ欠損が発生中（不安）</div>
+                  <div className="flex gap-2">
+                    <button onClick={() => setHasHole(false)} className="flex-1 py-2 bg-white border border-stone-200 text-stone-500 text-[10px] md:text-xs rounded-sm">なし</button>
+                    <button onClick={() => setIsAbsorbed(!isAbsorbed)} className={`flex-1 py-2 border text-[10px] md:text-xs font-bold rounded-sm ${isAbsorbed ? 'bg-teal-50 border-teal-200 text-teal-700' : 'bg-indigo-600 border-indigo-700 text-white'}`}>{isAbsorbed ? '吸収済み' : 'OSで抱え込む'}</button>
+                  </div>
+                </div>
+              )}
+              <p className="text-[10px] text-stone-500 font-serif leading-relaxed text-justify-mobile">ここで増やす“穴”は、まだ測れていない領域です。岡ビューでは、穴も含めて“全体として安全か”を見に行きます。</p>
+            </div>
+            <div className="mt-auto pt-4 border-t border-stone-100">
+                <StatusMonitor label="情緒メーター" value={emotionScore < 50 ? "UNSTABLE" : "STABLE"} isDanger={emotionScore < 50} />
+                <div className="w-full h-1 bg-stone-100 mt-2 rounded-full overflow-hidden">
+                  <div className={`h-full transition-all duration-500 ${emotionScore < 50 ? 'bg-rose-500' : 'bg-indigo-600'}`} style={{width: `${emotionScore}%`}}></div>
+                </div>
+            </div>
+            <div className="pt-2">
+              <Button onClick={onNext} label="第3章：情緒と素数重力" icon={<ArrowRight size={16}/>} primary />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+type PrimeWaveStats = { max: number; mean: number; peakIndex: number };
+
+const ChapterPrime = ({ 
+  onNext, 
+  onPrimeEnergyChange 
+}: { 
+  onNext: () => void; 
+  onPrimeEnergyChange: (energy: number) => void;
+}) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [tuningLevel, setTuningLevel] = useState(70); 
+  const [mode, setMode] = useState<'static' | 'living'>('static');
+  const [range, setRange] = useState(120);
+
+  const [waveStats, setWaveStats] = useState<PrimeWaveStats>({ max: 0, mean: 0, peakIndex: 0 });
+  const [harmonyRatio, setHarmonyRatio] = useState(0); 
+  const [currentEnergy, setCurrentEnergy] = useState<number>(0); 
+
+  const computePrimeWave = (maxX: number, currentMode: 'static' | 'living') => {
+    const primes: number[] = [];
+    const isPrime = (n: number) => {
+      if (n < 2) return false;
+      for (let i = 2; i * i <= n; i++) {
+        if (n % i === 0) return false;
+      }
+      return true;
+    };
+    for (let n = 2; n <= maxX; n++) {
+      if (isPrime(n)) primes.push(n);
+    }
+
+    const alpha = 0.08;
+    const baseValues: number[] = [];
+    for (let x = 1; x <= maxX; x++) {
+      let sum = 0;
+      for (const p of primes) {
+        const d = Math.abs(x - p);
+        sum += Math.exp(-alpha * d);
+      }
+      baseValues.push(sum);
+    }
+
+    let values = baseValues;
+    if (currentMode === 'living') {
+      values = baseValues.map((v, idx) => {
+        const pulse = 1.2 * Math.sin(idx * 0.8) + 0.8 * Math.cos(idx * 2.3) + (idx % 17 === 0 ? 2.5 : 0);
+        return Math.max(0, v + pulse);
+      });
+    }
+
+    let max = 0;
+    let peakIndex = 0;
+    values.forEach((v, i) => {
+      if (v > max) {
+        max = v;
+        peakIndex = i;
+      }
+    });
+    
+    const mean = values.reduce((s, v) => s + v, 0) / (values.length || 1);
+
+    return { values, primes, max, mean, peakIndex };
+  };
+
+  useEffect(() => {
+    const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
+
+    const w = 800;
+    const h = 450;
+    const margin = { left: 40, right: 40, top: 40, bottom: 40 };
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.strokeStyle = COLORS.chartGrid;
+    ctx.lineWidth = 1;
+    for (let i = margin.left; i < w - margin.right; i += 40) {
+      ctx.beginPath(); ctx.moveTo(i, margin.top); ctx.lineTo(i, h - margin.bottom); ctx.stroke();
+    }
+    for (let j = margin.top; j < h - margin.bottom; j += 40) {
+      ctx.beginPath(); ctx.moveTo(margin.left, j); ctx.lineTo(w - margin.right, j); ctx.stroke();
+    }
+
+    const { values, primes, max, mean, peakIndex } = computePrimeWave(range, mode);
+    setWaveStats({ max, mean, peakIndex });
+
+    const spanX = w - margin.left - margin.right;
+    const spanY = h - margin.top - margin.bottom;
+    const baseY = h - margin.bottom;
+    const displayMax = Math.max(max * 1.2, 10); 
+    const norm = displayMax;
+
+    const mapX = (x: number) => margin.left + ((x - 1) / (range - 1)) * spanX;
+    const mapY = (v: number) => baseY - (v / norm) * spanY;
+
+    const openness = tuningLevel / 100;
+    const capacityValue = mean + (max * 1.3 - mean) * (0.2 + openness * 0.9);
+    const capacityY = mapY(capacityValue);
+
+    ctx.fillStyle = 'rgba(16, 185, 129, 0.08)';
+    ctx.fillRect(margin.left, capacityY, spanX, baseY - capacityY);
+    
+    ctx.strokeStyle = COLORS.chartSafe;
+    ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+    ctx.beginPath(); ctx.moveTo(margin.left, capacityY); ctx.lineTo(margin.left + spanX, capacityY); ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = COLORS.chartSafe;
+    ctx.font = "bold 12px sans-serif";
+    ctx.fillText(`情緒の器（調和できる範囲）`, margin.left + spanX + 5, capacityY + 4);
+
+    let countUnder = 0;
+    ctx.lineWidth = 2.5;
+    
+    for (let x = 1; x < values.length; x++) {
+      const p1 = { x: mapX(x), y: mapY(values[x-1]) };
+      const p2 = { x: mapX(x+1), y: mapY(values[x]) };
+      
+      if (values[x-1] <= capacityValue) countUnder++;
+
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      
+      if (values[x-1] > capacityValue || values[x] > capacityValue) {
+        ctx.strokeStyle = COLORS.danger; 
+      } else {
+        ctx.strokeStyle = COLORS.primeWave; 
+      }
+      ctx.stroke();
+    }
+    if (values[values.length-1] <= capacityValue) countUnder++;
+
+    const peakX = mapX(peakIndex + 1);
+    const peakY = mapY(max);
+    
+    ctx.beginPath(); ctx.arc(peakX, peakY, 5, 0, Math.PI * 2);
+    ctx.fillStyle = COLORS.accent; ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+
+    ctx.fillStyle = COLORS.accent;
+    ctx.font = "bold 12px sans-serif";
+    ctx.fillText(`Peak Energy`, peakX - 40, peakY - 15);
+    
+    ctx.strokeStyle = COLORS.chartPoint;
+    ctx.lineWidth = 1;
+    primes.forEach((p) => {
+      const px = mapX(p);
+      ctx.beginPath(); ctx.moveTo(px, baseY); ctx.lineTo(px, baseY - 6); ctx.stroke();
+      ctx.beginPath(); ctx.arc(px, baseY - 6, 2, 0, Math.PI * 2);
+      ctx.fillStyle = COLORS.chartPoint; ctx.fill();
+    });
+
+    ctx.fillStyle = '#64748b';
+    ctx.font = "11px 'Noto Sans JP', sans-serif";
+    ctx.fillText("n（自然数）", margin.left + spanX / 2 - 20, h - 10);
+
+    const ratio = values.length > 0 ? countUnder / values.length : 0;
+    setHarmonyRatio(Math.round(ratio * 100));
+
+    const rawMax = Math.max(10, Math.round(max * 6));
+    const emotionFactor = 1.2 - (openness * 0.6); 
+    const adjustedE0 = Math.round(rawMax * emotionFactor);
+    const e0 = Math.min(99, Math.max(10, adjustedE0)); 
+    
+    setCurrentEnergy(e0);
+    onPrimeEnergyChange(e0);
+
+  }, [range, tuningLevel, mode]);
+
+  const harmonyStatus = harmonyRatio >= 95 ? '◎ 完全な調和' : harmonyRatio >= 60 ? '○ おおむね調和' : '× 崩壊';
+  const harmonyColor = harmonyRatio >= 95 ? 'text-teal-700' : harmonyRatio >= 60 ? 'text-amber-600' : 'text-rose-600';
+
+  const estimatedFinal = currentEnergy + 50; 
+  const isProjectedSafe = estimatedFinal <= 100;
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 w-full animate-fade-in">
+      {/* Visual First on Mobile */}
+      <div className="md:col-span-2 bg-white rounded-sm border border-stone-200 shadow-xl overflow-hidden relative order-1 md:order-2 aspect-video md:aspect-auto">
+        <AxisGuide />
+        <canvas ref={canvasRef} width={800} height={450} className="w-full h-full object-contain" />
+        <div className="absolute bottom-4 left-4 md:bottom-6 md:left-6 flex flex-wrap gap-3 md:gap-6 bg-white/90 px-3 py-2 md:px-4 md:py-2 rounded-sm border border-stone-200 backdrop-blur-sm shadow-sm">
+          <Legend color="bg-teal-500" label="情緒の器" />
+          <Legend color={mode==='static' ? "bg-indigo-600" : "bg-rose-600"} label={mode==='static' ? "素数の波" : "生命のゆらぎ"} />
+        </div>
+      </div>
+
+      <div className="md:col-span-1 space-y-4 md:space-y-5 order-2 md:order-1 flex flex-col">
+        {/* On Mobile: Controls First -> Header Last. This puts slider immediately below chart */}
+        <div className="contents md:block">
+          <Header title="第3章：情緒と素数重力" subtitle="Spontaneous Emotion & Living Math" icon={<Activity/>} className="order-2 md:order-1"/>
+
+          <div className="order-1 md:order-2 space-y-4 md:space-y-5">
+            <div className="bg-white border-l-4 border-indigo-800 p-4 rounded-r-sm shadow-sm border-y border-r border-stone-200">
+              <div className="flex items-center gap-2 mb-2">
+                <Radio size={16} className="text-indigo-800"/>
+                <h4 className="text-xs font-bold text-stone-800 font-serif">1. 情緒への同調</h4>
+              </div>
+              <p className="text-[11px] text-stone-600 font-serif leading-relaxed mb-3 text-justify-mobile">
+                <span className="inline-block">波がどんなに激しくても、</span><strong className="text-indigo-800 inline-block">情緒（Tuning）</strong><span className="inline-block">を高めれば、</span><span className="inline-block">その衝撃を吸収して</span><span className="inline-block">受け流すことができます。</span>
+                <span className="inline-block">心を閉じる（自我）と</span><span className="inline-block">衝撃をまともに受け、</span><span className="inline-block">破綻します。</span>
+              </p>
+              
+              <div className="space-y-1">
+                <div className="flex justify-between text-[10px] text-stone-500 font-bold">
+                  <span>自我（反発）</span>
+                  <span>情緒（受容）</span>
+                </div>
+                <input 
+                  type="range" 
+                  min={0} max={100} step={5} 
+                  value={tuningLevel} 
+                  onChange={(e) => setTuningLevel(parseInt(e.target.value))}
+                  className="w-full h-8 md:h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-indigo-800 touch-pan-x"
+                />
+                <div className="text-right text-[10px] font-mono text-indigo-800">TUNING: {tuningLevel}%</div>
+              </div>
+            </div>
+
+            <div className="bg-white border border-stone-200 rounded-sm p-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles size={16} className={mode==='living' ? "text-rose-600" : "text-stone-400"}/>
+                <h4 className="text-xs font-bold text-stone-800 font-serif">2. 生きている数学へ</h4>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setMode('static')} className={`flex-1 py-3 md:py-2 text-[11px] md:text-xs font-bold rounded-sm border transition-all ${mode==='static' ? 'bg-indigo-50 border-indigo-200 text-indigo-800' : 'bg-white border-stone-200 text-stone-400'}`}>死んだ数学 (Static)</button>
+                <button onClick={() => setMode('living')} className={`flex-1 py-3 md:py-2 text-[11px] md:text-xs font-bold rounded-sm border transition-all ${mode==='living' ? 'bg-rose-50 border-rose-200 text-rose-700 shadow-inner' : 'bg-white border-stone-200 text-stone-400'}`}>生きた数学 (Living)</button>
+              </div>
+              {mode === 'living' && (
+                <p className="text-[10px] text-rose-600 mt-2 font-serif leading-tight">
+                  ※ゆらぎが激しくなります。チューニングを高めて衝撃を和らげてください。
+                </p>
+              )}
+            </div>
+
+            <div className="bg-stone-50 border border-stone-200 rounded-sm p-4 shadow-inner">
+              <div className="flex items-center justify-between mb-1">
+                <h4 className="text-xs font-bold text-stone-600 font-serif">3. 実効エネルギー(E₀)</h4>
+                <span className={`text-sm font-bold ${isProjectedSafe ? 'text-teal-700' : 'text-rose-600'}`}>
+                  {isProjectedSafe ? 'SAFE' : 'DANGER'}
+                </span>
+              </div>
+              <div className="w-full h-1.5 bg-stone-200 rounded-full overflow-hidden mb-2">
+                <div className={`h-full transition-all duration-500 ${isProjectedSafe ? 'bg-teal-500' : 'bg-rose-500'}`} style={{width: `${Math.min(100, (currentEnergy / 50) * 100)}%`}}></div>
+              </div>
+
+              <div className="flex items-center justify-between border-t border-stone-200 pt-3 mt-3">
+                <div className="text-[10px] text-stone-500 font-serif leading-tight">
+                  緩和後の<br/>衝撃値 <span className="font-mono font-bold text-base">E₀</span>
+                </div>
+                <div className="text-2xl font-mono font-bold text-indigo-900 bg-white px-4 py-2 rounded border border-indigo-100 shadow-sm">
+                  {currentEnergy}
+                </div>
+              </div>
+              {/* 追加：E0の直感的定義 */}
+              <div className="mt-2 text-[10px] text-indigo-800 bg-indigo-50 p-2 rounded-sm border border-indigo-100 font-serif flex items-start gap-1">
+                <Info size={12} className="mt-0.5 flex-shrink-0"/>
+                <p className="leading-tight">素数のゆらぎを情緒でならした後の、一番キツい衝撃</p>
+              </div>
+              
+              <div className="mt-2 text-[10px] text-stone-400 text-right">
+                ※E₀が50以下なら次章でCLEAR可能
+              </div>
+            </div>
+
+            <Button onClick={onNext} label="第4章：微細変動の台帳記入" icon={<ArrowRight size={16}/>} primary />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Chapter3 = ({ 
+  onNext, 
+  primeEnergy 
+}: { 
+  onNext: () => void; 
+  primeEnergy: number | null;
+}) => {
+  const [step, setStep] = useState(0);
+  const [data, setData] = useState<any[]>([]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const effectiveInitialEnergy = primeEnergy !== null ? primeEnergy : SCENARIO_MICRO.initialEnergy;
+
+  // Auto-scroll effect
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [data]);
+
+  useEffect(() => { return () => { if(intervalRef.current) clearInterval(intervalRef.current); }; }, []);
+
+  const runCalc = () => {
+    if(intervalRef.current) clearInterval(intervalRef.current);
+    setStep(0); setData([]);
+    let cur = 0;
+    
+    const interval = setInterval(() => {
+      cur++;
+      setStep(cur);
+      const s = SCENARIO_MICRO.steps[cur-1];
+      setData(prev => {
+        const lastH = prev.length > 0 ? prev[prev.length-1].currentHeight : effectiveInitialEnergy;
+        return [...prev, { ...s, currentHeight: lastH + s.increase }];
+      });
+      
+      if(cur >= SCENARIO_MICRO.steps.length) { 
+        clearInterval(interval); 
+        intervalRef.current = null; 
+      }
+    }, 80); 
+    intervalRef.current = interval;
+  };
+
+  const isFinished = step >= SCENARIO_MICRO.steps.length;
+  const currentTotal = data.length > 0 ? data[data.length-1].currentHeight : effectiveInitialEnergy;
+  const isSafe = currentTotal <= SCENARIO_MICRO.limit;
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 w-full animate-fade-in">
+      {/* Mobile: Chart First -> Controls -> Header */}
+      
+      <div className="md:col-span-2 flex flex-col gap-4 order-1 md:order-2">
+        <div className="bg-white rounded-sm border border-stone-200 p-4 md:p-6 shadow-xl flex flex-col relative overflow-hidden min-h-[300px] md:min-h-[600px]">
+          <div className="absolute top-0 right-0 p-6 opacity-5"><AlignLeft size={120} className="text-stone-900"/></div>
+          
+          <div className="flex justify-between items-end mb-4 z-10 border-b border-stone-100 pb-4">
+            <div>
+              <h3 className="text-[10px] md:text-xs font-bold text-stone-400 uppercase tracking-widest mb-1 font-serif">SAFETY LEDGER (MICRO)</h3>
+              <div className="text-lg md:text-xl font-bold text-stone-800 flex items-center gap-2 font-serif">
+                <Shield size={20} className="text-indigo-800"/>
+                安全保証台帳
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-[10px] md:text-xs text-stone-400">TOTAL ENERGY</div>
+              <div className={`font-mono text-xl md:text-2xl font-bold ${isFinished ? (isSafe ? 'text-teal-700' : 'text-rose-600') : 'text-stone-300'}`}>
+                {data.length > 0 ? data[data.length-1].currentHeight : effectiveInitialEnergy} <span className="text-xs md:text-sm text-stone-400">/ 100</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Ledger Content */}
+          <div ref={scrollRef} className="w-full h-48 md:h-64 overflow-y-auto rounded-sm border border-stone-200 z-10 bg-stone-50 shadow-inner scroll-container relative mb-4">
+             <table className="w-full text-left text-xs font-mono">
+              <thead className="bg-white sticky top-0 border-b border-stone-200 text-stone-500 shadow-sm z-10">
+                <tr>
+                  <th className="p-2 font-serif w-12 md:w-16">No.</th>
+                  <th className="p-2 font-serif">種別</th>
+                  <th className="p-2 text-right font-serif">変動</th>
+                  <th className="p-2 text-right font-serif">現在値</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white">
+                <tr className="bg-indigo-50/30">
+                  <td className="p-2 text-stone-400 border-b border-stone-100">000</td>
+                  <td className="p-2 text-stone-800 font-bold border-b border-stone-100">INITIAL E₀</td>
+                  <td className="p-2 text-right text-stone-400 border-b border-stone-100">-</td>
+                  <td className="p-2 text-right font-bold text-indigo-900 border-b border-stone-100">{effectiveInitialEnergy}</td>
+                </tr>
+                {data.map(d => (
+                  <tr key={d.id} className="animate-fade-in-left border-b border-stone-100 last:border-0 hover:bg-stone-50">
+                    <td className="p-2 text-stone-400">{String(d.id).padStart(3, '0')}</td>
+                    <td className="p-2 text-stone-600 flex items-center gap-1">
+                      {d.increase > 0 ? <Activity size={10} className="text-rose-400 shrink-0"/> : <Activity size={10} className="text-teal-400 shrink-0"/>}
+                      {d.label}
+                    </td>
+                    <td className="p-2 text-right font-bold text-xs">
+                        <span className={d.increase > 0 ? "text-rose-600" : "text-teal-600"}>
+                          {d.increase > 0 ? `+${d.increase}` : `±0`}
+                        </span>
+                    </td>
+                    <td className={`p-2 text-right font-bold ${d.currentHeight > SCENARIO_MICRO.limit ? 'text-rose-600' : 'text-stone-800'}`}>
+                      {d.currentHeight}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="w-full bg-white border-t border-stone-200 p-3 z-20 flex justify-between items-center shadow-sm mb-4">
+              <span className="text-[10px] md:text-xs text-stone-500 font-bold">SAFETY LIMIT</span>
+              <span className="text-base md:text-lg font-bold text-teal-700 tracking-wider">100.00</span>
+          </div>
+          
+          {/* Result Area (Card) */}
+          {isFinished && (
+             <div className="animate-bounce-in w-full mb-4">
+               {isSafe ? (
+                 <div className="bg-teal-50 p-4 rounded-sm border border-teal-200 text-center">
+                    <div className="flex justify-center items-center gap-2 mb-1">
+                      <CheckCircle2 size={24} className="text-teal-700"/>
+                      <h4 className="text-lg font-bold text-teal-800">PROOF COMPLETED</h4>
+                    </div>
+                    <p className="text-xs text-teal-700 font-serif">
+                      無数の微細なゆらぎを全て累積させても、システムは安全域（100）の内側に留まりました。
+                    </p>
+                 </div>
+               ) : (
+                 <div className="bg-rose-50 p-4 rounded-sm border border-rose-200 text-center">
+                    <div className="flex justify-center items-center gap-2 mb-1">
+                      <AlertTriangle size={24} className="text-rose-700"/>
+                      <h4 className="text-lg font-bold text-rose-800">OVERFLOW</h4>
+                    </div>
+                    <p className="text-xs text-rose-700 font-serif">
+                      微細なゆらぎの累積が限界を超えました。<br/>
+                      前の章に戻り、<strong className="font-bold">「情緒」を高めて(スライダー右)</strong>衝撃を受け流してください。
+                    </p>
+                 </div>
+               )}
+             </div>
+          )}
+
+          {/* Oka Kiyoshi Column (Preserved) */}
+          {isFinished && isSafe && (
+            <div className="animate-fade-in mt-auto">
+              <div className="bg-stone-50 p-3 md:p-4 rounded-sm border border-stone-200 relative overflow-hidden group hover:border-indigo-200 transition-colors">
+                <div className="absolute top-0 left-0 w-1 h-full bg-indigo-800"></div>
+                <h3 className="text-xs font-bold text-indigo-900 mb-2 flex items-center gap-2 font-serif">
+                   <Globe size={14} className="text-indigo-700"/>
+                   岡潔が世界に残したもの
+                </h3>
+                <div className="space-y-2 text-[10px] text-stone-600 font-serif leading-relaxed text-justify-mobile">
+                   <p>
+                     1930〜50年代、岡潔は「多変数解析函数」の難問（近似・Cousin・擬凸）を解決し、現代数学の基礎を築きました。
+                     彼は「情熱」や「情緒」が数学の根底にあると語り続けました。
+                   </p>
+                   <p className="text-indigo-800 font-bold border-t border-stone-200 pt-2">
+                     Ghostdrift OSは、この「情緒が先、論理は後」という順序を、システム設計として現代に蘇らせたものです。
+                   </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="md:col-span-1 space-y-4 md:space-y-6 order-2 md:order-1 flex flex-col">
+        <div className="contents md:block">
+          <Header title="第4章：微細変動の総和" subtitle="Micro-Transaction Ledger" icon={<FileCheck/>} className="order-2 md:order-1"/>
+          
+          <div className="order-1 md:order-2 space-y-4 md:space-y-6">
+            {/* 追加：第3章からの橋渡しテキスト */}
+            <div className="text-xs text-stone-600 font-serif leading-relaxed mb-2 border-b border-stone-100 pb-2 text-justify-mobile">
+              <span className="inline-block">ここでは、第3章で決まった</span><strong className="text-indigo-800 inline-block">衝撃値(E₀)</strong><span className="inline-block">からスタートして、</span><span className="inline-block">その後の小さな揺れを</span><span className="inline-block">全部足しきっても</span><span className="inline-block">限界(100)を超えないかを</span><span className="inline-block">チェックします。</span>
+            </div>
+            
+            <div className="text-[10px] text-indigo-800 bg-indigo-50 p-3 rounded-sm border border-indigo-100 font-serif leading-relaxed text-justify-mobile">
+              Ghostdrift OS の核心は、前の章で見たような「生きている波のゆらぎ」を、ひとつひとつ逃さずに台帳に書き込み、それでも安全限界（Limit 100）を超えないことを証明することにあります。
+            </div>
+
+            <div className="bg-white border-l-4 border-indigo-800 p-4 rounded-r-sm shadow-sm border border-stone-100">
+              <p className="text-sm text-stone-700 font-serif mb-2 font-bold flex items-center gap-2">
+                <Microscope size={16} className="text-indigo-600"/>
+                微細な足し算（Micro-Sum）
+              </p>
+              <p className="text-[11px] text-stone-600 font-serif leading-relaxed">
+                基準となるエネルギー（E₀）を出発点として、そこから発生する無数の微細なゆらぎ（+1, +2, +3...）を高速に積み上げていきます。
+              </p>
+              {primeEnergy !== null && (
+                <p className="text-[11px] text-stone-500 font-mono bg-stone-50 border border-stone-200 rounded-sm px-3 py-2 mt-2">
+                  Start: E₀ = <span className="font-bold text-indigo-900">{effectiveInitialEnergy}</span>
+                </p>
+              )}
+            </div>
+
+            <div className="bg-white border border-stone-200 rounded-sm p-5 space-y-4 shadow-sm">
+              <div className="bg-stone-50 p-3 rounded-sm border border-stone-200 font-mono text-center">
+                <span className="text-sm text-indigo-900 font-bold">
+                  {`$E_0 + \\int (micro\\_fluctuations) \\le 100$`}
+                </span>
+              </div>
+              <div className="pt-2">
+                <Button onClick={runCalc} label={isFinished ? "再検証する" : "台帳記入スタート"} primary={!isFinished} icon={<Play size={14}/>} />
+              </div>
+            </div>
+
+            {isFinished && isSafe && (
+              <div className="animate-fade-in-up">
+                <Button onClick={onNext} label="結論：岡潔ラインへ" icon={<ArrowRight size={16}/>} />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Chapter4 = ({ onRestart }: { onRestart: () => void }) => {
+  return (
+    <div className="flex flex-col items-center justify-center space-y-8 md:space-y-12 animate-fade-in w-full py-8 md:py-12">
+      <div className="text-center space-y-3">
+        <h2 className="text-2xl md:text-4xl font-black text-stone-900 font-serif">AI TRUST OS</h2>
+        <p className="text-indigo-800 font-mono tracking-widest text-[10px] md:text-sm bg-indigo-50 px-3 py-1 md:px-4 rounded-full inline-block">WASAN 2.0 PROTOCOL</p>
+        
+        {/* 追加：一行サマリ */}
+        <p className="text-stone-500 font-serif text-xs md:text-sm mt-4 max-w-lg mx-auto leading-relaxed px-4 text-justify-mobile">
+          <span className="inline-block">見えないゆらぎを</span><strong className="text-indigo-800 inline-block">情緒</strong><span className="inline-block">で受け止め、</span><br className="md:hidden"/>
+          <span className="inline-block">残りを</span><strong className="text-teal-700 inline-block">有限の足し算</strong><span className="inline-block">で安全証明した</span>
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 w-full max-w-4xl">
+        {/* Left: Conventional */}
+        <div className="bg-white border border-stone-200 p-6 md:p-8 rounded-sm flex flex-col gap-4 md:gap-6 shadow-sm opacity-80 hover:opacity-100 transition-opacity relative group">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-stone-100 rounded-sm"><TrendingUp size={20} className="text-stone-500"/></div>
+            <div>
+              <h3 className="font-bold text-stone-700">CONVENTIONAL</h3>
+              <p className="text-[10px] text-stone-400 font-mono">なめらかだと信じるAI</p>
+            </div>
+          </div>
+          <div className="space-y-4 flex-grow">
+            <div className="p-3 bg-stone-50 rounded-sm border border-stone-100">
+              <div className="text-[10px] md:text-xs text-stone-400 mb-1 font-bold">ASSUMPTION</div>
+              <div className="text-xs md:text-sm text-stone-600 font-serif">見えない隙間を「なめらか」と信じる</div>
+            </div>
+            <div className="p-3 bg-stone-50 rounded-sm border border-stone-100">
+              <div className="text-[10px] md:text-xs text-stone-400 mb-1 font-bold">SAFETY</div>
+              <div className="text-xs md:text-sm text-stone-600 font-serif">確率的（保証なし）</div>
+            </div>
+          </div>
+          <div className="mt-2 text-center text-rose-600 text-[10px] md:text-xs font-bold uppercase tracking-widest border-t border-stone-100 pt-4">
+            Structurally Vulnerable
+          </div>
+        </div>
+
+        {/* Right: Wasan 2.0 */}
+        <div className="bg-white border-2 border-indigo-100 p-6 md:p-8 rounded-sm flex flex-col gap-4 md:gap-6 shadow-xl shadow-indigo-100/50 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 blur-3xl rounded-full"></div>
+          <div className="flex items-center gap-3 mb-2 relative z-10">
+            <div className="p-2 bg-indigo-900 text-white rounded-sm shadow-md"><Lock size={20} /></div>
+            <div>
+              <h3 className="font-bold text-indigo-900">WASAN 2.0</h3>
+              <p className="text-[10px] text-indigo-500 font-mono">FINITE CLOSURE · OKA LINE</p>
+            </div>
+          </div>
+          <div className="space-y-4 flex-grow relative z-10">
+            <div className="p-3 bg-indigo-50/50 rounded-sm border border-indigo-100">
+              <div className="text-[10px] md:text-xs text-indigo-400 mb-1 font-bold">METHOD</div>
+              <div className="text-xs md:text-sm text-indigo-900 font-serif">最悪ケースの最大値を足し算</div>
+            </div>
+            <div className="p-3 bg-indigo-50/50 rounded-sm border border-indigo-100">
+              <div className="text-[10px] md:text-xs text-indigo-400 mb-1 font-bold">SAFETY</div>
+              <div className="text-xs md:text-sm text-indigo-900 font-serif">数学的証明付き（Absolutely Safe）</div>
+            </div>
+            <p className="text-[10px] md:text-[11px] text-stone-500 italic font-serif leading-relaxed mt-2 border-t border-indigo-50 pt-2 text-justify-mobile">
+              <span className="inline-block">「たぶん大丈夫」という予測を捨てて、</span><span className="inline-block">「計算できる有限の数字」だけで</span><span className="inline-block">安全を守る。</span><span className="inline-block">それが新しいAIのルールです。</span><br className="hidden md:inline"/>
+              <span className="inline-block">人の中心にある情緒を壊さないように、</span><span className="inline-block">OS側で世界の揺らぎを受け止める</span><span className="inline-block">という発想です。</span>
+            </p>
+          </div>
+          <div className="mt-2 text-center text-indigo-700 text-[10px] md:text-xs font-bold uppercase tracking-widest border-t border-indigo-100 pt-4 relative z-10">
+            Emotion-Respecting AI OS
+          </div>
+        </div>
+      </div>
+
+      {/* Prime OS Connection - Enhanced Link */}
+      <div className="w-full max-w-4xl pt-8 border-t border-stone-100 flex flex-col items-center gap-4">
+        <div className="text-center w-full px-4">
+            <div className="flex justify-center items-center gap-2 text-stone-400 text-xs font-mono uppercase tracking-widest mb-3">
+              <Cpu size={14}/> Next Step
+            </div>
+            
+            <a 
+              href="https://ghostdrifttheory.github.io/prime-counter-demo/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="group relative inline-flex items-center gap-3 px-6 py-4 md:px-8 md:py-4 bg-stone-900 text-white rounded-sm hover:bg-stone-800 transition-all shadow-lg hover:shadow-xl w-full md:w-auto justify-center"
+            >
+              <div className="flex flex-col items-start text-left">
+                <span className="text-[10px] text-stone-400 font-mono uppercase tracking-widest">Prototype</span>
+                <span className="font-bold font-serif text-sm md:text-base">素数計算OS (Ghostdrift Prime) へ</span>
+              </div>
+              <ArrowRight size={20} className="text-stone-400 group-hover:text-white group-hover:translate-x-1 transition-all" />
+              
+              {/* Decorative shine effect */}
+              <div className="absolute top-0 left-0 w-full h-full overflow-hidden rounded-sm pointer-events-none">
+                <div className="absolute top-0 -left-full w-1/2 h-full bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 group-hover:animate-[shimmer_1.5s_infinite]"></div>
+              </div>
+            </a>
+
+            <p className="text-[10px] text-stone-400 font-serif mt-4 leading-relaxed">
+               この有限閉包原理は、素数分布の重力制御（Ghost Prime）と全く同じ構造で動いています。
+            </p>
+        </div>
+      </div>
+
+      <Button onClick={onRestart} label="RESTART DEMO" icon={<RefreshCw size={16}/>} />
+    </div>
+  );
+};
+
+const AdvancedPhase = ({ onBack }: { onBack: () => void }) => {
+  return (
+    <div className="w-full max-w-4xl mx-auto animate-fade-in pb-16 px-2 md:px-0">
+      <div className="mb-8 text-center">
+        <div className="inline-flex items-center justify-center p-3 bg-stone-100 rounded-full text-stone-600 mb-4">
+          <Book size={24} />
+        </div>
+        <h2 className="text-xl md:text-3xl font-bold font-serif text-stone-900 mb-2 leading-tight">
+          <span className="inline-block">多変数解析・不定域イデアルと</span><br/><span className="inline-block">「素数重力OS」のあいだ</span>
+        </h2>
+        <p className="text-[10px] md:text-xs text-stone-500 font-mono tracking-widest uppercase">
+          Gap between Oka's Mathematics & Ghostdrift Implementation
+        </p>
+      </div>
+
+      <div className="space-y-8 md:space-y-12">
+        <div className="bg-stone-50 p-4 md:p-6 rounded-sm border border-stone-200 text-xs md:text-sm font-serif leading-relaxed text-stone-600 text-justify-mobile">
+          <p>※ここから先は、岡潔ガチ勢／多変数解析ガチ勢向けの解説です。</p>
+          <p className="mt-2">
+            このデモの目的は、岡潔の数学的到達点を現代のOS技術として追体験することですが、
+            歴史的事実と技術的実装を混同しないよう、
+            <strong className="text-indigo-900">【岡潔の到達点】</strong> と <strong className="text-teal-700">【Ghostdrift 側の実装】</strong> を明示して書き分けます。
+          </p>
+        </div>
+
+        <section className="space-y-4 md:space-y-6">
+          <h3 className="text-lg md:text-xl font-bold text-stone-800 border-l-4 border-indigo-900 pl-4 py-1 font-serif">
+            1. 紀見峠の数学者が見ていた「領域全体」の世界
+            <span className="block text-[10px] md:text-xs font-normal text-stone-400 mt-1 font-sans">多変数解析／正則領域</span>
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            <div className="bg-white border border-stone-200 p-4 md:p-6 rounded-sm shadow-sm">
+              <div className="flex items-center gap-2 mb-4 text-indigo-900 font-bold border-b border-indigo-100 pb-2">
+                <History size={18} />
+                <span>岡潔の到達点</span>
+              </div>
+              <div className="text-xs md:text-sm text-stone-600 font-serif leading-7 space-y-4 text-justify-mobile">
+                <p>
+                  岡潔の専門は「多変数解析関数論」、つまり複素数 1 個ではなく <span className="font-mono bg-stone-100 px-1">複素数 n 個の世界（ℂⁿ）</span> での関数論でした。
+                </p>
+                <p>
+                  そこで彼が追いかけた核心は、「どんな領域が正則領域（domain of holomorphy）か？」、つまり「これ以上どこにも解析的に延長できない、“世界として完結した”領域は何か？」という問いでした。
+                </p>
+                <p>
+                  ハルトークスの逆問題、Cousin 問題、Levi 問題（擬凸問題）などを次々と解決していく中で、彼は<strong className="border-b border-stone-300">「局所微分」ではなく、「領域全体の構造」が本質を決める</strong>という徹底したスタンスを確立しました。
+                </p>
+              </div>
+            </div>
+            <div className="bg-indigo-50/30 border border-indigo-100 p-4 md:p-6 rounded-sm shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-50 rounded-full -mr-8 -mt-8 blur-xl"></div>
+              <div className="flex items-center gap-2 mb-4 text-teal-800 font-bold border-b border-teal-100 pb-2 relative z-10">
+                <Cpu size={18} />
+                <span>Ghostdrift 側の実装</span>
+              </div>
+              <div className="text-xs md:text-sm text-stone-600 font-serif leading-7 space-y-4 relative z-10 text-justify-mobile">
+                <p>
+                  デモ第2章の「領域全体スライダー」「穴をあける／塞ぐ UI」は、この “領域全体をいじると世界の性質が変わる” という感覚を、1次元（実数直線）のモデルに落とし込んだものです。
+                </p>
+                <ul className="list-disc list-outside ml-4 space-y-1 text-stone-500 text-[10px] md:text-xs">
+                  <li>ユーザーがレンジや穴を動かすと、OSが「finite closure（閉包）」の状態を再計算する</li>
+                  <li>情緒ゲージが「局所の微分」ではなく「レンジ全体の構造」によって変動する</li>
+                </ul>
+                <p className="text-teal-900 font-bold text-[10px] md:text-xs mt-2">
+                  ※「局所の計算ではなく、領域全体として閉じているかどうかで安全を決める」という思想のみを、岡の大域主義からOS設計へ継承しています。
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="space-y-4 md:space-y-6">
+          <h3 className="text-lg md:text-xl font-bold text-stone-800 border-l-4 border-indigo-900 pl-4 py-1 font-serif">
+            2. 不定域イデアル：「領域がまだ決まっていない」
+            <span className="block text-[10px] md:text-xs font-normal text-stone-400 mt-1 font-sans">条件だけを先に握る（多変数解析の超コア層）</span>
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            <div className="bg-white border border-stone-200 p-4 md:p-6 rounded-sm shadow-sm">
+              <div className="flex items-center gap-2 mb-4 text-indigo-900 font-bold border-b border-indigo-100 pb-2">
+                <History size={18} />
+                <span>岡潔の到達点</span>
+              </div>
+              <div className="text-xs md:text-sm text-stone-600 font-serif leading-7 space-y-4 text-justify-mobile">
+                <p>
+                  多変数解析の後半で岡は、<span className="font-bold text-stone-800">「不定域イデアル（不確定領域の正則イデアル）」</span>という非常に独特な概念を導入しました。
+                </p>
+                <p>
+                  通常は「領域 D があって、その上の関数を考える」ところを、逆に「まだ D が決まっていない段階で、“こういう性質をもつ関数族（条件の束）”があれば、逆に D が浮かび上がってくる」という逆転の発想です。
+                </p>
+                <p>
+                  これは「領域（世界）が先ではなく、“満たすべき条件”が先にあり、それにふさわしい領域の方が後から決まる」という、ラジカルな視点の転換でした。
+                </p>
+              </div>
+            </div>
+            <div className="bg-indigo-50/30 border border-indigo-100 p-4 md:p-6 rounded-sm shadow-sm relative overflow-hidden">
+              <div className="flex items-center gap-2 mb-4 text-teal-800 font-bold border-b border-teal-100 pb-2 relative z-10">
+                <Cpu size={18} />
+                <span>Ghostdrift 側の実装</span>
+              </div>
+              <div className="text-xs md:text-sm text-stone-600 font-serif leading-7 space-y-4 relative z-10 text-justify-mobile">
+                <p>
+                  このデモの第4章に出てくる<span className="font-bold text-stone-800">整数台帳（Σ₁台帳）</span>は、まさにこの構造の実装です。
+                </p>
+                <p>
+                  Ghostdrift OS が握っているのは「有限窓で必ず成り立っていて、かつ将来レンジを伸ばしても壊れないような条件（不等式）の束」です。
+                  その条件の束が、結果として「この OS が安全に扱える領域（finite closure domain）」を決定します。
+                </p>
+                <p className="text-teal-900 font-bold text-[10px] md:text-xs mt-2">
+                  ※「条件（イデアル）が先で、領域が後から決まる」という論理の矢印の向きを、OSの安全設計（台帳ファースト）として再現しています。
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="space-y-4 md:space-y-6">
+          <h3 className="text-lg md:text-xl font-bold text-stone-800 border-l-4 border-indigo-900 pl-4 py-1 font-serif">
+            3. 情緒 → 素数重力 → finite closure
+            <span className="block text-[10px] md:text-xs font-normal text-stone-400 mt-1 font-sans">情緒レイヤーをどう素数の世界につなぐか</span>
+          </h3>
+          <div className="bg-white border border-stone-200 p-4 md:p-8 rounded-sm shadow-sm">
+              <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-start">
+                <div className="flex-1 space-y-4">
+                  <div className="flex items-center gap-2 mb-2 text-indigo-900 font-bold">
+                      <Heart size={18} />
+                      <span>岡潔：情緒の数学</span>
+                  </div>
+                  <p className="text-xs md:text-sm text-stone-600 font-serif leading-relaxed text-justify-mobile">
+                    『春宵十話』などで岡は「人間の中心は情緒である」「数学とは、自らの情緒を外に表現する学問芸術のひとつである」と語りました。
+                    彼にとって数学は、<span className="font-bold">情緒（調和を感じる力）が先にあり、論理や計算はそのあとをついてくるもの</span>でした。
+                  </p>
+                </div>
+                <div className="hidden md:flex items-center justify-center pt-8">
+                  <ArrowRight className="text-stone-300" size={32} />
+                </div>
+                <div className="flex-1 space-y-4">
+                  <div className="flex items-center gap-2 mb-2 text-teal-800 font-bold">
+                      <Layers size={18} />
+                      <span>Ghostdrift：素数重力レイヤー</span>
+                  </div>
+                  <p className="text-xs md:text-sm text-stone-600 font-serif leading-relaxed text-justify-mobile">
+                    ここで「素数重力」が登場します。デモ第3章では、素数配置を「調和の源」と見なし、その重なりが作る波の滑らかさを<span className="font-bold">「情緒ゲージ」</span>として可視化しました。
+                    その波の乱れ（不調和）を許容範囲に収めること（Limit 100）が、OSとしての安全（Security）になります。
+                  </p>
+                </div>
+              </div>
+              <div className="mt-6 md:mt-8 pt-6 border-t border-stone-100">
+                <div className="flex items-center gap-2 mb-3 text-stone-800 font-bold font-serif text-sm">
+                  <Lightbulb size={16} className="text-amber-500" />
+                  <span>三層構造の対応</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 text-center text-xs font-serif">
+                  <div className="p-3 bg-stone-50 rounded border border-stone-100">
+                    <div className="font-bold text-indigo-900 mb-1">岡潔の「情緒」</div>
+                    <div className="text-stone-500">調和を感じる心</div>
+                  </div>
+                  <div className="hidden md:block text-stone-300 py-3">↔</div>
+                  <div className="p-3 bg-indigo-50 rounded border border-indigo-100">
+                    <div className="font-bold text-indigo-900 mb-1">素数重力の「波」</div>
+                    <div className="text-stone-500">なめらかさ・安定性</div>
+                  </div>
+                  <div className="hidden md:block text-stone-300 py-3">↔</div>
+                  <div className="p-3 bg-teal-50 rounded border border-teal-100">
+                    <div className="font-bold text-teal-800 mb-1">OSの「安全余裕」</div>
+                    <div className="text-stone-500">finite closure / δ_pos</div>
+                  </div>
+                </div>
+              </div>
+          </div>
+        </section>
+
+        <div className="bg-stone-800 text-stone-300 p-6 md:p-8 rounded-sm shadow-lg text-center space-y-6">
+          <h4 className="text-base md:text-lg font-bold font-serif text-white">境界線のまとめ</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 text-left text-xs leading-relaxed font-serif">
+            <div>
+              <h5 className="text-indigo-300 font-bold mb-2 border-b border-stone-600 pb-1">岡潔が証明・主張したもの</h5>
+              <ul className="list-disc list-outside ml-4 space-y-1">
+                <li>多変数解析における正則領域、Cousin問題、ハルトークス逆問題などの解決</li>
+                <li>不定域イデアル、上空移行の原理などの理論的枠組み</li>
+                <li>「数学は情緒の表現である」という哲学</li>
+              </ul>
+            </div>
+            <div>
+              <h5 className="text-teal-300 font-bold mb-2 border-b border-stone-600 pb-1">Ghostdrift が独自に追加・実装したもの</h5>
+              <ul className="list-disc list-outside ml-4 space-y-1">
+                <li>素数重力（prime landscape を物理的な重力場として読む解釈）</li>
+                <li>Yukawaカーネル、δ_pos、finite closure OS、Σ₁台帳という具体的実装</li>
+                <li>それらを情緒ゲージやエネルギー指標と結び付けたUIデザイン</li>
+              </ul>
+            </div>
+          </div>
+          <p className="text-[10px] md:text-xs text-stone-400 border-t border-stone-700 pt-4 mt-4 text-justify-mobile">
+            このデモは、岡潔が見ていた数学の世界観を、現代の工学／OS設計の言葉で<span className="text-white font-bold">「翻訳」して実装した</span>ものであり、岡の定理そのものを再証明しているわけではありません。
+          </p>
+          <button 
+            onClick={onBack}
+            className="mt-4 px-6 py-3 bg-white text-stone-900 rounded-sm font-bold text-xs hover:bg-stone-200 transition-colors w-full md:w-auto"
+          >
+            デモに戻る
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- Main App Component (Must be last) ---
+export default function App() {
+  const [phase, setPhase] = useState<Phase>('intro');
+  const [primeEnergy, setPrimeEnergy] = useState<number | null>(null);
+
+  return (
+    <div className={`min-h-screen ${COLORS.bg} ${COLORS.text} font-sans selection:bg-indigo-100 selection:text-indigo-900 flex flex-col`}>
+      <GlobalStyles />
+      {/* Header */}
+      <header className="border-b border-stone-200 bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 py-3 md:py-4 flex justify-between items-center">
+          <div className="flex items-center gap-2 md:gap-3 cursor-pointer group" onClick={() => setPhase('intro')}>
+            <div 
+              className="w-7 h-7 md:w-8 md:h-8 bg-indigo-900 rounded-sm flex items-center justify-center font-serif font-bold text-base md:text-lg text-white shadow-md group-hover:bg-indigo-800 transition-colors"
+            >
+              和
+            </div>
+            <div className="flex flex-col">
+              <h1 className="text-xs md:text-sm font-bold tracking-widest uppercase text-stone-800 leading-none">
+                和算 2.0 <span className="text-indigo-700 font-serif ml-1">ADIC</span>
+              </h1>
+              <p className="text-[8px] md:text-[10px] text-stone-500 font-mono tracking-widest mt-0.5">
+                Oka Kiyoshi Edition
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <nav className="flex items-center gap-1 bg-stone-100 p-1 rounded-full border border-stone-200 overflow-x-auto max-w-[150px] md:max-w-none scrollbar-hide">
+              {['intro', 'chapter1', 'chapter2', 'chapterPrime', 'chapter3', 'chapter4'].map((p, i) => (
+                <button
+                  key={p}
+                  onClick={() => setPhase(p as Phase)}
+                  className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex shrink-0 items-center justify-center text-[10px] font-serif font-bold transition-all ${
+                    phase === p 
+                      ? 'bg-indigo-800 text-white shadow-md' 
+                      : 'text-stone-400 hover:text-stone-600 hover:bg-stone-200'
+                  }`}
+                >
+                  {i === 0 ? '序' : i}
+                </button>
+              ))}
+            </nav>
+            
+            <button
+              onClick={() => setPhase('advanced')}
+              className={`flex items-center gap-1 px-2.5 py-1.5 md:px-3 md:py-1.5 rounded-full text-[10px] font-bold border transition-all ${
+                phase === 'advanced'
+                  ? 'bg-stone-800 text-white border-stone-900 shadow-md'
+                  : 'bg-white text-stone-500 border-stone-200 hover:bg-stone-50 hover:text-stone-800'
+              }`}
+            >
+              <Book size={12} />
+              <span className="hidden sm:inline">解説</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-grow flex flex-col items-center justify-center p-4 md:p-6 w-full max-w-6xl mx-auto">
+        <div className="w-full h-full transition-all duration-500 ease-in-out">
+          {phase === 'intro' && <IntroPhase onNext={() => setPhase('chapter1')} onAdvanced={() => setPhase('advanced')} />}
+          {phase === 'chapter1' && <Chapter1 onNext={() => setPhase('chapter2')} />}
+          {phase === 'chapter2' && <Chapter2 onNext={() => setPhase('chapterPrime')} />}
+          
+          {phase === 'chapterPrime' && (
+            <ChapterPrime 
+              onNext={() => setPhase('chapter3')} 
+              onPrimeEnergyChange={setPrimeEnergy}
+            />
+          )}
+          
+          {phase === 'chapter3' && (
+            <Chapter3 
+              onNext={() => setPhase('chapter4')} 
+              primeEnergy={primeEnergy}
+            />
+          )}
+          
+          {phase === 'chapter4' && <Chapter4 onRestart={() => setPhase('intro')} />}
+          {phase === 'advanced' && <AdvancedPhase onBack={() => setPhase('intro')} />}
+        </div>
+      </main>
+    </div>
+  );
+}
