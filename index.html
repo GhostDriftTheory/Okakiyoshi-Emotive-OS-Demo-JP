@@ -307,12 +307,12 @@
                     <div className="absolute top-0 left-0 w-1 h-full bg-indigo-800"></div>
                     <div className="text-sm md:text-base text-stone-600 font-serif leading-8 md:leading-9 text-justify-mobile space-y-4">
                     <p>
-                        <span className="inline-block">現代の計算は</span><span className="inline-block">「世界はなめらかである」と</span><strong className="font-bold text-stone-900 border-b border-indigo-200 inline-block">信じて</strong><span className="inline-block">進めます。</span>
+                        <span className="inline-block">現代の計算は</span><span className="inline-block">「世界はなめらかである」と</span><strong className="font-bold text-stone-900 border-b border-indigo-200 inline-block">信じて</strong><span className="inline-block">進めます。</span><br className="md:hidden" />
                         <span className="inline-block">しかし私たちが</span><span className="inline-block">本当に見るのは、</span><span className="inline-block">いつも「飛び飛びの点（データ）」</span><span className="inline-block">だけです。</span>
                     </p>
                     <p>
-                        <span className="inline-block">このデモでは、</span><span className="inline-block">岡潔が大事にした</span><span className="font-bold text-indigo-800 inline-block">情緒</span>──
-                        <span className="inline-block">決して自分では制御できない、</span><span className="inline-block">自生的な心の動き──を、</span>
+                        <span className="inline-block">このデモでは、</span><span className="inline-block">岡潔が大事にした</span><span className="font-bold text-indigo-800 inline-block">情緒</span>──<br className="md:hidden" />
+                        <span className="inline-block">決して自分では制御できない、</span><span className="inline-block">自生的な心の動き──を、</span><br className="md:hidden" />
                         <span className="inline-block">有限の足し算だけで</span><span className="inline-block">受け止めるOSを</span><span className="inline-block">体験します。</span>
                     </p>
                     </div>
@@ -1286,6 +1286,11 @@
         function App() {
             const [phase, setPhase] = useState('intro');
             const [primeEnergy, setPrimeEnergy] = useState(null);
+
+            // Scroll to top when phase changes
+            useEffect(() => {
+                window.scrollTo(0, 0);
+            }, [phase]);
 
             return (
                 <div className={`min-h-screen ${COLORS.bg} ${COLORS.text} font-sans selection:bg-indigo-100 selection:text-indigo-900 flex flex-col`}>
