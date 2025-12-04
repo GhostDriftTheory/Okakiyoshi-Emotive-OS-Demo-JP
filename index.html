@@ -294,7 +294,7 @@
                 
                 <div className="space-y-4 max-w-2xl px-2">
                     <h1 className="text-2xl sm:text-3xl md:text-5xl font-serif font-bold text-stone-900 tracking-tight leading-snug md:leading-tight">
-                    <span className="inline-block">情緒を守る</span><span className="inline-block"><span className="text-rose-700">ゴースト封じ</span>を</span><br className="hidden sm:block" />
+                    <span className="inline-block">情緒を守る</span><span className="inline-block"><span className="text-rose-700">ゴースト封じ</span>を</span>
                     <span className="inline-block"><span className="text-indigo-800">和算</span>で体験する</span>
                     </h1>
                     <div className="h-px w-16 md:w-24 bg-indigo-900/20 mx-auto my-4 md:my-6"></div>
@@ -307,13 +307,10 @@
                     <div className="absolute top-0 left-0 w-1 h-full bg-indigo-800"></div>
                     <div className="text-sm md:text-base text-stone-600 font-serif leading-8 md:leading-9 text-justify-mobile space-y-4">
                     <p>
-                        <span className="inline-block">現代の計算は</span><span className="inline-block">「世界はなめらかである」と</span><strong className="font-bold text-stone-900 border-b border-indigo-200 inline-block">信じて</strong><span className="inline-block">進めます。</span><br className="md:hidden" />
-                        <span className="inline-block">しかし私たちが</span><span className="inline-block">本当に見るのは、</span><span className="inline-block">いつも「飛び飛びの点（データ）」</span><span className="inline-block">だけです。</span>
+                        現代の計算は「世界はなめらかである」と<strong className="font-bold text-stone-900 border-b border-indigo-200">信じて</strong>進めます。しかし私たちが本当に見るのは、いつも「飛び飛びの点（データ）」だけです。
                     </p>
                     <p>
-                        <span className="inline-block">このデモでは、</span><span className="inline-block">岡潔が大事にした</span><span className="font-bold text-indigo-800 inline-block">情緒</span>──<br className="md:hidden" />
-                        <span className="inline-block">決して自分では制御できない、</span><span className="inline-block">自生的な心の動き──を、</span><br className="md:hidden" />
-                        <span className="inline-block">有限の足し算だけで</span><span className="inline-block">受け止めるOSを</span><span className="inline-block">体験します。</span>
+                        このデモでは、岡潔が大事にした<span className="font-bold text-indigo-800">情緒</span>──決して自分では制御できない、自生的な心の動き──を、有限の足し算だけで受け止めるOSを体験します。
                     </p>
                     </div>
                 </div>
@@ -360,9 +357,9 @@
                         <Badge text={viewState === 'data' ? "1. 有限の点" : viewState === 'model' ? "2. なめらか（局所）" : "3. 生のゆらぎ"} color={viewState} />
                         <div className="text-xs md:text-sm text-stone-600 leading-relaxed font-serif text-justify-mobile">
                             <p>
-                            <span className="inline-block">{viewState === 'data' && "私たちは「点」しか見えません。"}</span><span className="inline-block">{viewState === 'data' && "しかしAIや科学は、"}</span><span className="inline-block">{viewState === 'data' && "点の間を勝手につないでしまいます。"}</span>
-                            <span className="inline-block">{viewState === 'model' && "「なめらかにつながっているはずだ」という思い込み（死んだ数学）は、"}</span><span className="inline-block">{viewState === 'model' && "計算しやすいですが現実の生を見落とします。"}</span>
-                            <span className="inline-block">{viewState === 'ghost' && "数学的には、点の間で何が起きていても自由です。"}</span><span className="inline-block">{viewState === 'ghost' && "ここに見えない「生のゆらぎ（ゴースト）」が潜んでいます。"}</span>
+                            {viewState === 'data' && "私たちは「点」しか見えません。しかしAIや科学は、点の間を勝手につないでしまいます。"}
+                            {viewState === 'model' && "「なめらかにつながっているはずだ」という思い込み（死んだ数学）は、計算しやすいですが現実の生を見落とします。"}
+                            {viewState === 'ghost' && "数学的には、点の間で何が起きていても自由です。ここに見えない「生のゆらぎ（ゴースト）」が潜んでいます。"}
                             </p>
                         </div>
                     </div>
@@ -550,11 +547,11 @@
                             <button onClick={() => setViewMode('oka')} className={`flex-1 py-2 text-[11px] md:text-xs font-bold rounded-sm transition-all ${viewMode==='oka' ? 'bg-indigo-800 shadow-sm text-white' : 'text-stone-400'}`}>岡ビュー（領域）</button>
                         </div>
                         <p className="text-[10px] text-stone-500 font-serif leading-relaxed text-justify-mobile">
-                            <span className="inline-block">局所だけを見ると“よさそう”に見えますが、</span><span className="inline-block">岡潔は領域全体で見ると</span><span className="inline-block">逆の顔になることを問題にしました。</span>
+                            局所だけを見ると“よさそう”に見えますが、岡潔は領域全体で見ると逆の顔になることを問題にしました。
                         </p>
                         <div className="text-[10px] text-indigo-800 bg-indigo-50 p-2 rounded-sm border border-indigo-100 mt-2 font-serif flex gap-2 items-start leading-relaxed text-justify-mobile">
                             <History size={12} className="mt-0.5 flex-shrink-0" />
-                            <span><span className="inline-block">1930〜40年代、この『領域全体で見る』視点で</span><span className="inline-block">Cousin問題など世界中が</span><span className="inline-block">手こずっていた難問が</span><span className="inline-block">一気に片づきました。</span></span>
+                            <span>1930〜40年代、この『領域全体で見る』視点でCousin問題など世界中が手こずっていた難問が一気に片づきました。</span>
                         </div>
                     </div>
                     <div className="space-y-2 border-t border-stone-100 pt-4">
@@ -571,7 +568,7 @@
                             </div>
                         )}
                         <p className="text-[10px] text-stone-500 font-serif leading-relaxed text-justify-mobile">
-                            <span className="inline-block">ここで増やす“穴”は、</span><span className="inline-block">まだ測れていない領域です。</span><span className="inline-block">岡ビューでは、穴も含めて</span><span className="inline-block">“全体として安全か”を見に行きます。</span>
+                            ここで増やす“穴”は、まだ測れていない領域です。岡ビューでは、穴も含めて“全体として安全か”を見に行きます。
                         </p>
                     </div>
                     <div className="mt-auto pt-4 border-t border-stone-100">
@@ -691,8 +688,8 @@
                         <h4 className="text-xs font-bold text-stone-800 font-serif">1. 情緒への同調</h4>
                     </div>
                     <p className="text-[11px] text-stone-600 font-serif leading-relaxed mb-3 text-justify-mobile">
-                        <span className="inline-block">波がどんなに激しくても、</span><strong className="text-indigo-800 inline-block">情緒（Tuning）</strong><span className="inline-block">を高めれば、</span><span className="inline-block">その衝撃を吸収して</span><span className="inline-block">受け流すことができます。</span>
-                        <span className="inline-block">心を閉じる（自我）と</span><span className="inline-block">衝撃をまともに受け、</span><span className="inline-block">破綻します。</span>
+                        波がどんなに激しくても、<strong className="text-indigo-800 inline-block">情緒（Tuning）</strong>を高めれば、その衝撃を吸収して受け流すことができます。
+                        心を閉じる（自我）と衝撃をまともに受け、破綻します。
                     </p>
                     
                     <div className="space-y-1">
@@ -823,7 +820,7 @@
                         微細な足し算（Micro-Sum）
                     </p>
                     <p className="text-[11px] text-stone-600 font-serif leading-relaxed">
-                        <span className="inline-block">基準となるエネルギー（E₀）を出発点として、</span><span className="inline-block">そこから発生する無数の</span><span className="inline-block">微細なゆらぎ（+1, +2, +3...）を</span><span className="inline-block">高速に積み上げていきます。</span>
+                        基準となるエネルギー（E₀）を出発点として、そこから発生する無数の微細なゆらぎ（+1, +2, +3...）を高速に積み上げていきます。
                     </p>
                     {primeEnergy !== null && (
                         <p className="text-[11px] text-stone-500 font-mono bg-stone-50 border border-stone-200 rounded-sm px-3 py-2 mt-2">
@@ -1096,9 +1093,9 @@
                     <div className="bg-stone-50 p-4 md:p-6 rounded-sm border border-stone-200 text-xs md:text-sm font-serif leading-relaxed text-stone-600 text-justify-mobile">
                     <p>※ここから先は、岡潔ガチ勢／多変数解析ガチ勢向けの解説です。</p>
                     <p className="mt-2">
-                        <span className="inline-block">このデモの目的は、</span><span className="inline-block">岡潔の数学的到達点を</span><span className="inline-block">現代のOS技術として</span><span className="inline-block">追体験することですが、</span>
-                        <span className="inline-block">歴史的事実と技術的実装を</span><span className="inline-block">混同しないよう、</span>
-                        <strong className="text-indigo-900 inline-block">【岡潔の到達点】</strong><span className="inline-block"> と </span><strong className="text-teal-700 inline-block">【Ghostdrift 側の実装】</strong><span className="inline-block"> を明示して書き分けます。</span>
+                        このデモの目的は、岡潔の数学的到達点を現代のOS技術として追体験することですが、
+                        歴史的事実と技術的実装を混同しないよう、
+                        <strong className="text-indigo-900">【岡潔の到達点】</strong> と <strong className="text-teal-700">【Ghostdrift 側の実装】</strong> を明示して書き分けます。
                     </p>
                     </div>
 
@@ -1115,13 +1112,13 @@
                         </div>
                         <div className="text-xs md:text-sm text-stone-600 font-serif leading-7 space-y-4 text-justify-mobile">
                             <p>
-                            <span className="inline-block">岡潔の専門は「多変数解析関数論」、</span><span className="inline-block">つまり複素数 1 個ではなく</span><span className="font-mono bg-stone-100 px-1 inline-block">複素数 n 個の世界（ℂⁿ）</span><span className="inline-block">での関数論でした。</span>
+                            岡潔の専門は「多変数解析関数論」、つまり複素数 1 個ではなく <span className="font-mono bg-stone-100 px-1">複素数 n 個の世界（ℂⁿ）</span> での関数論でした。
                             </p>
                             <p>
-                            <span className="inline-block">そこで彼が追いかけた核心は、</span><span className="inline-block">「どんな領域が正則領域（domain of holomorphy）か？」、</span><span className="inline-block">つまり「これ以上どこにも</span><span className="inline-block">解析的に延長できない、</span><span className="inline-block">“世界として完結した”領域は何か？」</span><span className="inline-block">という問いでした。</span>
+                            そこで彼が追いかけた核心は、「どんな領域が正則領域（domain of holomorphy）か？」、つまり「これ以上どこにも解析的に延長できない、“世界として完結した”領域は何か？」という問いでした。
                             </p>
                             <p>
-                            <span className="inline-block">ハルトークスの逆問題、</span><span className="inline-block">Cousin 問題、</span><span className="inline-block">Levi 問題（擬凸問題）などを</span><span className="inline-block">次々と解決していく中で、</span><span className="inline-block">彼は<strong className="border-b border-stone-300">「局所微分」ではなく、「領域全体の構造」が本質を決める</strong>という</span><span className="inline-block">徹底したスタンスを確立しました。</span>
+                            ハルトークスの逆問題、Cousin 問題、Levi 問題（擬凸問題）などを次々と解決していく中で、彼は<strong className="border-b border-stone-300">「局所微分」ではなく、「領域全体の構造」が本質を決める</strong>という徹底したスタンスを確立しました。
                             </p>
                         </div>
                         </div>
@@ -1133,14 +1130,14 @@
                         </div>
                         <div className="text-xs md:text-sm text-stone-600 font-serif leading-7 space-y-4 relative z-10 text-justify-mobile">
                             <p>
-                            <span className="inline-block">デモ第2章の「領域全体スライダー」「穴をあける／塞ぐ UI」は、</span><span className="inline-block">この “領域全体をいじると世界の性質が変わる” という感覚を、</span><span className="inline-block">1次元（実数直線）のモデルに落とし込んだものです。</span>
+                            デモ第2章の「領域全体スライダー」「穴をあける／塞ぐ UI」は、この “領域全体をいじると世界の性質が変わる” という感覚を、1次元（実数直線）のモデルに落とし込んだものです。
                             </p>
                             <ul className="list-disc list-outside ml-4 space-y-1 text-stone-500 text-[10px] md:text-xs">
                             <li>ユーザーがレンジや穴を動かすと、OSが「finite closure（閉包）」の状態を再計算する</li>
                             <li>情緒ゲージが「局所の微分」ではなく「レンジ全体の構造」によって変動する</li>
                             </ul>
                             <p className="text-teal-900 font-bold text-[10px] md:text-xs mt-2">
-                            <span className="inline-block">※「局所の計算ではなく、</span><span className="inline-block">領域全体として閉じているかどうかで</span><span className="inline-block">安全を決める」という思想のみを、</span><span className="inline-block">岡の大域主義からOS設計へ継承しています。</span>
+                            ※「局所の計算ではなく、領域全体として閉じているかどうかで安全を決める」という思想のみを、岡の大域主義からOS設計へ継承しています。
                             </p>
                         </div>
                         </div>
@@ -1160,13 +1157,13 @@
                         </div>
                         <div className="text-xs md:text-sm text-stone-600 font-serif leading-7 space-y-4 text-justify-mobile">
                             <p>
-                            <span className="inline-block">多変数解析の後半で岡は、</span><span className="font-bold text-stone-800 inline-block">「不定域イデアル（不確定領域の正則イデアル）」</span><span className="inline-block">という非常に独特な概念を</span><span className="inline-block">導入しました。</span>
+                            多変数解析の後半で岡は、<span className="font-bold text-stone-800">「不定域イデアル（不確定領域の正則イデアル）」</span>という非常に独特な概念を導入しました。
                             </p>
                             <p>
-                            <span className="inline-block">通常は「領域 D があって、</span><span className="inline-block">その上の関数を考える」ところを、</span><span className="inline-block">逆に「まだ D が決まっていない段階で、</span><span className="inline-block">“こういう性質をもつ関数族（条件の束）”があれば、</span><span className="inline-block">逆に D が浮かび上がってくる」という</span><span className="inline-block">逆転の発想です。</span>
+                            通常は「領域 D があって、その上の関数を考える」ところを、逆に「まだ D が決まっていない段階で、“こういう性質をもつ関数族（条件の束）”があれば、逆に D が浮かび上がってくる」という逆転の発想です。
                             </p>
                             <p>
-                            <span className="inline-block">これは「領域（世界）が先ではなく、</span><span className="inline-block">“満たすべき条件”が先にあり、</span><span className="inline-block">それにふさわしい領域の方が後から決まる」という、</span><span className="inline-block">ラジカルな視点の転換でした。</span>
+                            これは「領域（世界）が先ではなく、“満たすべき条件”が先にあり、それにふさわしい領域の方が後から決まる」という、ラジカルな視点の転換でした。
                             </p>
                         </div>
                         </div>
@@ -1177,14 +1174,14 @@
                         </div>
                         <div className="text-xs md:text-sm text-stone-600 font-serif leading-7 space-y-4 relative z-10 text-justify-mobile">
                             <p>
-                            <span className="inline-block">このデモの第4章に出てくる</span><span className="font-bold text-stone-800 inline-block">整数台帳（Σ₁台帳）</span><span className="inline-block">は、まさにこの構造の実装です。</span>
+                            このデモの第4章に出てくる<span className="font-bold text-stone-800">整数台帳（Σ₁台帳）</span>は、まさにこの構造の実装です。
                             </p>
                             <p>
-                            <span className="inline-block">Ghostdrift OS が握っているのは</span><span className="inline-block">「有限窓で必ず成り立っていて、</span><span className="inline-block">かつ将来レンジを伸ばしても</span><span className="inline-block">壊れないような条件（不等式）の束」です。</span>
-                            <span className="inline-block">その条件の束が、</span><span className="inline-block">結果として「この OS が安全に扱える領域（finite closure domain）」を</span><span className="inline-block">決定します。</span>
+                            Ghostdrift OS が握っているのは「有限窓で必ず成り立っていて、かつ将来レンジを伸ばしても壊れないような条件（不等式）の束」です。
+                            その条件の束が、結果として「この OS が安全に扱える領域（finite closure domain）」を決定します。
                             </p>
                             <p className="text-teal-900 font-bold text-[10px] md:text-xs mt-2">
-                            <span className="inline-block">※「条件（イデアル）が先で、</span><span className="inline-block">領域が後から決まる」という</span><span className="inline-block">論理の矢印の向きを、</span><span className="inline-block">OSの安全設計（台帳ファースト）として</span><span className="inline-block">再現しています。</span>
+                            ※「条件（イデアル）が先で、領域が後から決まる」という論理の矢印の向きを、OSの安全設計（台帳ファースト）として再現しています。
                             </p>
                         </div>
                         </div>
@@ -1204,8 +1201,8 @@
                                 <span>岡潔：情緒の数学</span>
                             </div>
                             <p className="text-xs md:text-sm text-stone-600 font-serif leading-relaxed text-justify-mobile">
-                                <span className="inline-block">『春宵十話』などで岡は</span><span className="inline-block">「人間の中心は情緒である」</span><span className="inline-block">「数学とは、自らの情緒を外に表現する</span><span className="inline-block">学問芸術のひとつである」と</span><span className="inline-block">語りました。</span>
-                                <span className="inline-block">彼にとって数学は、</span><span className="font-bold inline-block">情緒（調和を感じる力）が先にあり、</span><span className="inline-block">論理や計算はそのあとをついてくるもの</span><span className="inline-block">でした。</span>
+                                『春宵十話』などで岡は「人間の中心は情緒である」「数学とは、自らの情緒を外に表現する学問芸術のひとつである」と語りました。
+                                彼にとって数学は、<span className="font-bold">情緒（調和を感じる力）が先にあり、論理や計算はそのあとをついてくるもの</span>でした。
                             </p>
                             </div>
                             <div className="hidden md:flex items-center justify-center pt-8">
@@ -1217,8 +1214,8 @@
                                 <span>Ghostdrift：素数計算OSレイヤー</span>
                             </div>
                             <p className="text-xs md:text-sm text-stone-600 font-serif leading-relaxed text-justify-mobile">
-                                <span className="inline-block">ここで「素数計算OS」が登場します。</span><span className="inline-block">デモ第3章では、素数配置を</span><span className="inline-block">「調和の源」と見なし、</span><span className="inline-block">その重なりが作る波の滑らかさを</span><span className="font-bold inline-block">「情緒ゲージ」</span><span className="inline-block">として可視化しました。</span>
-                                <span className="inline-block">その波の乱れ（不調和）を</span><span className="inline-block">許容範囲に収めること（Limit 100）が、</span><span className="inline-block">OSとしての安全（Security）になります。</span>
+                                ここで「素数計算OS」が登場します。デモ第3章では、素数配置を「調和の源」と見なし、その重なりが作る波の滑らかさを<span className="font-bold">「情緒ゲージ」</span>として可視化しました。
+                                その波の乱れ（不調和）を許容範囲に収めること（Limit 100）が、OSとしての安全（Security）になります。
                             </p>
                             </div>
                         </div>
@@ -1268,7 +1265,7 @@
                         </div>
                     </div>
                     <p className="text-[10px] md:text-xs text-stone-400 border-t border-stone-700 pt-4 mt-4 text-justify-mobile">
-                        <span className="inline-block">このデモは、岡潔が見ていた</span><span className="inline-block">数学の世界観を、現代の工学／OS設計の</span><span className="inline-block">言葉で<span className="text-white font-bold">「翻訳」して実装した</span>ものであり、</span><span className="inline-block">岡の定理そのものを</span><span className="inline-block">再証明しているわけではありません。</span>
+                        このデモは、岡潔が見ていた数学の世界観を、現代の工学／OS設計の言葉で<span className="text-white font-bold">「翻訳」して実装した</span>ものであり、岡の定理そのものを再証明しているわけではありません。
                     </p>
                     <button 
                         onClick={onBack}
